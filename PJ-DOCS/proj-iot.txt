@@ -1,0 +1,18 @@
+Dans le cadre de ce module j'ai également un Projet d'IoT, les sujets sont dans le fichier ProjetIoT_Fev2025.pdf . Notre groupe à choisi le N°1b. Un début est référencé dans le GitHub suivant: https://github.com/TheoBens3IL/IoT_Project .
+
+Inventaire rapide du matos projet:
+1. Modules principaux :
+-M5Stack LoRa868 V1.1 (écran, 3 boutons, connecteurs Grove/GPIO)
+- Carte ESP32 format Arduino (WROOM, headers, micro-USB)
+- SenseCAP Indicator Seeed Studio (ESP32, écran tactile, USB-C) - IHM/supervision
+2. Connectivité :
+- 2 antennes fouet : LoRa 868 MHz + Wi-Fi/BLE 2.4 GHz
+- Câbles pigtail u.FL ↔ SMA + connecteur SMA traversant
+3. Accessoires :
+- Câbles JST (alimentation batterie), Dupont
+- Support circulaire avec logements Grove/modules
+4. Architecture potentielle : Réseau LoRa avec nœuds ESP32, passerelle M5Stack, interface de supervision tactile.
+
+
+C'est ce projet là: Projet n°1b : Reprise du projet - Communication Lora point à point
+Décrit dans le .pdf ProjetIoT_Fev2025.pdf et image matos-proj-iot.png

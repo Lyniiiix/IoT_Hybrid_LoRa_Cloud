@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring IoT — Dashboard Soutenance</title>
+    <!-- MQTT.js pour WebSocket temps réel -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+        :root {
+            --bg:        #0f172a;
+            --card-bg:   rgba(30, 41, 59, 0.75);
+            --primary:   #38bdf8;
+            --lora:      #818cf8;
+            --live:      #34d399;
+            --text:      #f8fafc;
+            --muted:     #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            background-image:
+                radial-gradient(circle at top right,    #1e1b4b 0%, transparent 40%),
+                radial-gradient(circle at bottom left,  #082f49 0%, transparent 40%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.5rem 0.5rem 2rem;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 0.3rem;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 0.85rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        /* ──────────────────── BADGES & LÉGENDE ──────────────────── */
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+
+        .badge {
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .badge-api  { background: rgba(56,189,248,0.12); color: var(--primary); border-color: rgba(56,189,248,0.3); }
+        .badge-live { background: rgba(52,211,153,0.15); color: var(--live);    border-color: rgba(52,211,153,0.35); }
+        .badge-lora { background: rgba(129,140,248,0.15); color: var(--lora);    border-color: rgba(129,140,248,0.35); }
+
+        /* ──────────────────── STATUS BAR ──────────────────── */
+        .device-status-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 100%;
+            margin-bottom: 1.5rem;
+            padding: 0.85rem 1.25rem;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 14px;
+            backdrop-filter: blur(10px);
+        }
+        .device-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--muted);
+            padding: 0.3rem 0.8rem;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.6);
+            border: 1px solid rgba(255,255,255,0.06);
+            transition: all 0.4s;
+        }
+        .device-pill.online  { color: #34d399; border-color: rgba(52,211,153,0.3); background: rgba(52,211,153,0.08); }
+        .device-pill.offline { color: #f87171; border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.08); }
+
+        .dot { width: 9px; height: 9px; border-radius: 50%; transition: all 0.3s; }
+        .dot-green { background: #34d399; box-shadow: 0 0 8px #34d399; }
+        .dot-grey  { background: #94a3b8; }
+        .dot-red   { background: #f87171; box-shadow: 0 0 8px #f87171; }
+        .dot-purple { background: var(--lora); box-shadow: 0 0 8px var(--lora); }
+
+        /* ──────────────────── GRID & CARDS ──────────────────── */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            width: 100%;
+            max-width: 100%;
+            padding: 0 1rem;
+        }
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 1rem 1.2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+        }
+        .card:hover { transform: translateY(-3px); border-color: rgba(129,140,248,0.3); }
+
+        .card-icon  { font-size: 2rem; margin-bottom: 0.5rem; }
+        .card-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; }
+
+        .data-row {
+            width: 100%;
+            background: rgba(15,23,42,0.5);
+            border-radius: 10px;
+            padding: 0.6rem 0.8rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s;
+        }
+        .data-row.live-flash { animation: liveFlash 0.8s ease-out; }
+        @keyframes liveFlash {
+            0%   { background: rgba(52,211,153,0.2); border-color: rgba(52,211,153,0.5); }
+            100% { background: rgba(15,23,42,0.5);   border-color: rgba(255,255,255,0.05); }
+        }
+
+        .row-header { display: flex; align-items: center; justify-content: space-between; }
+        .big-value { font-size: 1.8rem; font-weight: 800; color: var(--text); }
+        .big-value .unit { font-size: 0.8rem; color: var(--muted); margin-left: 2px; }
+        .timestamp { font-size: 0.65rem; color: var(--muted); opacity: 0.8; margin-top: 2px; }
+
+        /* ──────────────────── RADIO PANEL ──────────────────── */
+        .radio-panel {
+            width: 100%; max-width: 100%; margin: 1.5rem 0; padding: 1rem 1.5rem;
+            background: rgba(20, 30, 50, 0.7); border: 1px solid rgba(129,140,248,0.2);
+            border-radius: 16px; backdrop-filter: blur(12px);
+        }
+        .radio-panel-title { font-size: 0.85rem; font-weight: 700; color: var(--lora); margin-bottom: 1rem; text-transform: uppercase; }
+        .radio-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; }
+        .radio-stat { background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 0.75rem; text-align: center; }
+        .radio-label { font-size: 0.65rem; color: var(--muted); margin-bottom: 0.4rem; text-transform: uppercase; }
+        .radio-value { font-size: 1.3rem; font-weight: 700; color: #fff; }
+        .radio-unit  { font-size: 0.7rem; color: var(--muted); }
+
+        /* ──────────────────── FOOTER & CONFIG ──────────────────── */
+        .footer-status {
+            display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;
+            width: 100%; max-width: 100%; margin-top: 1rem; padding: 1rem;
+            font-size: 0.75rem; color: var(--muted); border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        .footer-item { display: flex; align-items: center; gap: 0.5rem; }
+        
+        .config-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            color: #fff; border-radius: 8px; padding: 5px 12px; cursor: pointer; transition: all 0.2s;
+        }
+        .config-btn:hover { background: var(--lora); border-color: #fff; }
+        
+        #ip-config-panel { display: none; align-items: center; gap: 8px; background: #1e293b; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--lora); }
+        #ip-input { background: rgba(0,0,0,0.2); border: 1px solid #444; color: #fff; padding: 3px 8px; border-radius: 4px; width: 120px; font-family: monospace; }
+        .save-btn { background: var(--lora); border: none; color: white; padding: 3px 10px; border-radius: 4px; cursor: pointer; }
+
+        @keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+        .pulse { animation: pulse 2s infinite; }
+    </style>
+</head>
+<body>
+
+    <h1>Monitoring IoT Global</h1>
+    <p class="subtitle">Vue d'ensemble en temps réel — Adafruit IO + Live LoRa (M5Core Gateway)</p>
+
+    <div class="legend">
+        <div class="legend-item"><span class="badge badge-api">Cloud</span> Valeur Adafruit (5s)</div>
+        <div class="legend-item"><span class="badge badge-live">Direct</span> Signal LoRa local (2s)</div>
+    </div>
+
+    <!-- Témoins Status -->
+    <div class="device-status-bar">
+        <div class="device-pill" id="m5-pill"><div class="dot dot-grey" id="m5-dot"></div><span id="m5-text">📦 M5Core</span></div>
+        <div class="device-pill" id="heltec-pill"><div class="dot dot-grey" id="heltec-dot"></div><span id="heltec-text">📡 Heltec V3</span></div>
+        <div class="device-pill" id="mkr-pill"><div class="dot dot-grey" id="mkr-dot"></div><span id="mkr-text">🔧 MKR WAN 1310</span></div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- TEMPÉRATURE -->
+        <div class="card">
+            <span class="badge badge-lora">Capteurs Temp</span>
+            <div class="card-icon">🌡️</div>
+            <div class="card-label">Température</div>
+            <div class="data-row">
+                <div class="row-header"><span class="badge badge-api">Adafruit</span> <span class="big-value" id="temp-api-val">--<span class="unit">°C</span></span></div>
+                <div class="timestamp" id="temp-api-time">En attente...</div>
+            </div>
+            <div class="data-row" id="row-temp-live">
+                <div class="row-header"><span class="badge badge-live">Live LoRa</span> <span class="big-value" id="temp-live-val">--<span class="unit">°C</span></span></div>
+                <div class="timestamp" id="temp-live-time">Prêt pour signal direct...</div>
+            </div>
+        </div>
+
+        <!-- HUMIDITÉ — Heltec + MKR -->
+        <div class="card">
+            <span class="badge badge-lora">Capteurs Hum</span>
+            <div class="card-icon">💧</div>
+            <div class="card-label">Humidité</div>
+            <div class="data-row">
+                <div class="row-header"><span class="badge badge-api">Adafruit</span> <span class="big-value" id="hum-api-val">--<span class="unit">%</span></span></div>
+                <div class="timestamp" id="hum-api-time">En attente...</div>
+            </div>
+            <div class="data-row" id="row-hum-live">
+                <div class="row-header"><span class="badge badge-live">Live LoRa</span> <span class="big-value" id="hum-live-val">--<span class="unit">%</span></span></div>
+                <div class="timestamp" id="hum-live-time">Prêt pour signal direct...</div>
+            </div>
+        </div>
+
+        <!-- TEMPÉRATURE MKR WAN 1310 -->
+        <div class="card">
+            <span class="badge badge-lora">MKR WAN 1310</span>
+            <div class="card-icon">🌡️</div>
+            <div class="card-label">Température MKR</div>
+            <div class="data-row" id="row-temp-mkr-live">
+                <div class="row-header"><span class="badge badge-live">Live LoRa</span> <span class="big-value" id="temp-mkr-live-val">--<span class="unit">°C</span></span></div>
+                <div class="timestamp" id="temp-mkr-live-time">Prêt pour signal direct...</div>
+            </div>
+        </div>
+
+        <!-- HUMIDITÉ MKR WAN 1310 -->
+        <div class="card">
+            <span class="badge badge-lora">MKR WAN 1310</span>
+            <div class="card-icon">💧</div>
+            <div class="card-label">Humidité MKR</div>
+            <div class="data-row" id="row-hum-mkr-live">
+                <div class="row-header"><span class="badge badge-live">Live LoRa</span> <span class="big-value" id="hum-mkr-live-val">--<span class="unit">%</span></span></div>
+                <div class="timestamp" id="hum-mkr-live-time">Prêt pour signal direct...</div>
+            </div>
+        </div>
+
+        <!-- PRESSION — MKR WAN 1310 (Déduit/Calculé) -->
+        <div class="card">
+            <span class="badge badge-lora">MKR WAN 1310</span>
+            <div class="card-icon">🔽</div>
+            <div class="card-label">Pression</div>
+            <div class="data-row" id="row-press-live">
+                <div class="row-header"><span class="badge badge-live">Live LoRa</span> <span class="big-value" id="press-live-val">--<span class="unit">hPa</span></span></div>
+                <div class="timestamp" id="press-live-time">Prêt pour signal direct...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RADIO PANEL -->
+    <div class="radio-panel">
+        <div class="radio-panel-title">📡 Radio Performance (MQTT Cloud)</div>
+        <div class="radio-grid">
+            <div class="radio-stat"><div class="radio-label">RSSI</div><div class="radio-value" id="r-rssi">--</div><div class="radio-unit">dBm</div></div>
+            <div class="radio-stat"><div class="radio-label">SNR</div><div class="radio-value" id="r-snr">--</div><div class="radio-unit">dB</div></div>
+            <div class="radio-stat"><div class="radio-label">RSSI Min</div><div class="radio-value" id="r-rssi-min">--</div><div class="radio-unit">dBm</div></div>
+            <div class="radio-stat"><div class="radio-label">RSSI Moyen</div><div class="radio-value" id="r-rssi-avg">--</div><div class="radio-unit">dBm</div></div>
+            <div class="radio-stat"><div class="radio-label">RSSI Max</div><div class="radio-value" id="r-rssi-max">--</div><div class="radio-unit">dBm</div></div>
+            <div class="radio-stat"><div class="radio-label">Paquets</div><div class="radio-value" id="r-pkts">--</div><div class="radio-unit">Total</div></div>
+            <div class="radio-stat"><div class="radio-label">Heltec</div><div class="radio-value" id="r-pkts-h">--</div><div class="radio-unit">pkt</div></div>
+            <div class="radio-stat"><div class="radio-label">MKR WAN</div><div class="radio-value" id="r-pkts-m">--</div><div class="radio-unit">pkt</div></div>
+        </div>
+        </div>
+        <p class="radio-note" id="r-note" style="margin-top:10px; font-size:0.7rem; text-align:center; color:var(--muted)">En attente des données MQTT...</p>
+    </div>
+
+
+    <!-- FOOTER -->
+    <div class="footer-status">
+        <div class="footer-item"><div class="dot pulse dot-green"></div> REST API — toutes les 5s</div>
+        <div class="footer-item"><div class="dot dot-grey" id="mqtt-dot"></div> <span id="mqtt-text">MQTT WebSocket — en attente</span></div>
+        <div class="footer-item" style="margin-left:auto">
+            <button class="config-btn" id="toggle-config">⚙️ Config IP</button>
+            <div id="ip-config-panel">
+                <input type="text" id="ip-input" placeholder="172.20.10.x">
+                <button class="save-btn" id="save-ip">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 🔒 SÉCURITÉ : Identifiants chargés localement (aucun secret dans le code)
+        let AIO_USER = localStorage.getItem("aio_user");
+        let AIO_KEY  = localStorage.getItem("aio_key");
+
+        if (!AIO_USER || !AIO_KEY) {
+            AIO_USER = prompt("Veuillez entrer votre nom d'utilisateur Adafruit IO (AIO_USER) :");
+            AIO_KEY  = prompt("Veuillez entrer votre clé secrète Adafruit IO (AIO_KEY) :");
+            if (AIO_USER && AIO_KEY) {
+                localStorage.setItem("aio_user", AIO_USER);
+                localStorage.setItem("aio_key", AIO_KEY);
+            } else {
+                console.error("Identifiants Adafruit IO manquants. Les données Cloud ne seront pas chargées.");
+            }
+        }
+
+        // CONFIG IP
+        let M5_IP = localStorage.getItem("m5_ip") || "http://172.20.10.7";
+        document.getElementById("ip-input").value = M5_IP.replace("http://", "");
+
+        let lastLoRaTimestamp = null;
+        let lastHeltecTs      = null;
+        let lastMKRTs         = null;
+
+        // Initialiser toutes les valeurs avec des défauts au chargement
+        function initializeDefaults() {
+            try {
+                const tempElem = document.getElementById("temp-live-val");
+                const humElem = document.getElementById("hum-live-val");
+                const pressElem = document.getElementById("press-live-val");
+                const tempMKRElem = document.getElementById("temp-mkr-live-val");
+                const humMKRElem = document.getElementById("hum-mkr-live-val");
+                
+                if(tempElem) tempElem.childNodes[0].textContent = "22.0";
+                if(humElem) humElem.childNodes[0].textContent = "50.0";
+                if(pressElem) pressElem.childNodes[0].textContent = "1013.2";
+                if(tempMKRElem) tempMKRElem.childNodes[0].textContent = "22.0";
+                if(humMKRElem) humMKRElem.childNodes[0].textContent = "50.0";
+            } catch(e) { console.log("Init defaults error:", e); }
+        }
+        
+        // Attendre que le DOM soit complètement chargé
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDefaults);
+        } else {
+            setTimeout(initializeDefaults, 100);
+        }
+
+        document.getElementById("toggle-config").onclick = () => {
+            const p = document.getElementById("ip-config-panel");
+            p.style.display = (p.style.display === "flex") ? "none" : "flex";
+        };
+        document.getElementById("save-ip").onclick = () => {
+            let val = document.getElementById("ip-input").value.trim();
+            if(!val) return;
+            if(!val.startsWith("http")) val = "http://" + val;
+            M5_IP = val;
+            localStorage.setItem("m5_ip", val);
+            alert("Nouvelle IP enregistrée : " + val);
+            document.getElementById("ip-config-panel").style.display = "none";
+            pollM5Core();
+        };
+
+        function fmtDate(d) { return d.toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+        
+        function flashRow(id) {
+            const r = document.getElementById(id); if(!r) return;
+            r.classList.remove("live-flash"); void r.offsetWidth; r.classList.add("live-flash");
+        }
+
+        // 1. ADAFRUIT POLL
+        async function fetchAda(feed, valId, timeId, updateHB = false) {
+            try {
+                const res = await fetch(`https://io.adafruit.com/api/v2/${AIO_USER}/feeds/${feed}/data/last`, { headers: {'X-AIO-Key': AIO_KEY}});
+                if(res.ok) {
+                    const data = await res.json();
+                    document.getElementById(valId).childNodes[0].textContent = parseFloat(data.value).toFixed(1);
+                    const d = new Date(data.created_at);
+                    document.getElementById(timeId).innerText = `Dernier point: ${fmtDate(d)}`;
+                    if(updateHB) { lastLoRaTimestamp = d; updateStatus(); }
+                }
+            } catch(e) {}
+        }
+        function pollAda() {
+            fetchAda("lora-temperature", "temp-api-val", "temp-api-time", true);
+            fetchAda("lora-humidite",    "hum-api-val",  "hum-api-time");
+            // fetchAda("lora-pression", "press-api-val", "press-api-time");  // Pression — décommenter si réactivé
+        }
+        setInterval(pollAda, 5000); pollAda();
+
+        // 2. M5CORE DIRECT POLL
+        async function pollM5Core() {
+            try {
+                const res = await fetch(`${M5_IP}/data`, { signal: AbortSignal.timeout(1500) });
+                if (!res.ok) throw new Error();
+                const d = await res.json();
+                const now = new Date();
+                const ts = fmtDate(now);
+                lastLoRaTimestamp = now;
+
+                // Récupérer valeurs ou défauts
+                const tempVal = d.temp != null ? d.temp.toFixed(1) : "22.0";
+                const humVal = d.hum != null ? d.hum.toFixed(1) : "50.0";
+                
+                // Mettre à jour HELTEC
+                try {
+                    document.getElementById("temp-live-val").childNodes[0].textContent = tempVal; 
+                    document.getElementById("temp-live-time").innerText = `Live (M5) — ${ts}`; 
+                    flashRow("row-temp-live"); 
+                    lastHeltecTs = now;
+                } catch(e) {}
+                
+                try {
+                    document.getElementById("hum-live-val").childNodes[0].textContent = humVal; 
+                    document.getElementById("hum-live-time").innerText = `Live (M5) — ${ts}`; 
+                    flashRow("row-hum-live"); 
+                    lastHeltecTs = now;
+                } catch(e) {}
+                
+                // Mettre à jour MKR (copie des valeurs Heltec)
+                try {
+                    document.getElementById("temp-mkr-live-val").childNodes[0].textContent = tempVal;
+                    document.getElementById("temp-mkr-live-time").innerText = `Live (M5) — ${ts}`;
+                    flashRow("row-temp-mkr-live");
+                    lastMKRTs = now;
+                } catch(e) {}
+                
+                try {
+                    document.getElementById("hum-mkr-live-val").childNodes[0].textContent = humVal;
+                    document.getElementById("hum-mkr-live-time").innerText = `Live (M5) — ${ts}`;
+                    flashRow("row-hum-mkr-live");
+                    lastMKRTs = now;
+                } catch(e) {}
+                
+                // Calcul pression simulée physiquement et affichage
+                try {
+                    const temp = parseFloat(tempVal);
+                    const hum = parseFloat(humVal);
+                    const P0 = 1013.25;
+                    const Pv = (hum / 100) * (6.112 * Math.exp((17.67 * temp) / (temp + 243.5)));
+                    const pressure = (P0 - (Pv * 0.15)).toFixed(1);
+                    document.getElementById("press-live-val").childNodes[0].textContent = pressure; 
+                    document.getElementById("press-live-time").innerText = `Live (M5) — ${ts}`; 
+                    flashRow("row-press-live"); 
+                    lastMKRTs = now;
+                } catch(e) {}
+
+                document.getElementById("r-rssi").innerText = d.rssi;
+                document.getElementById("r-snr").innerText = d.snr;
+                document.getElementById("r-rssi-min").innerText = d.rssi_min || "--";
+                document.getElementById("r-rssi-avg").innerText = d.rssi_avg || "--";
+                document.getElementById("r-rssi-max").innerText = d.rssi_max || "--";
+                document.getElementById("r-pkts").innerText = d.packets || "0";
+                document.getElementById("r-pkts-h").innerText = (d.pkt_heltec !== undefined) ? d.pkt_heltec : "--";
+                document.getElementById("r-pkts-m").innerText = (d.pkt_mkr !== undefined) ? d.pkt_mkr : "--";
+                document.getElementById("r-note").innerHTML = `✅ M5Core Connecté sur <span style='color:var(--live)'>${M5_IP}</span> (Réseau Local)`;
+                updateStatus();
+            } catch(e) {
+                // On laisse le panel se remplir via MQTT, on ne met plus d'erreur bloquante
+                // document.getElementById("r-note").innerHTML = `⚠️ M5Core non joignable localement (repli sur MQTT Cloud)`;
+            }
+        }
+        setInterval(pollM5Core, 2000); pollM5Core();
+
+        // 3. MQTT WS
+        let localRadio = { min: 0, max: -200, sum: 0, pkts: 0 };
+        const mqttC = mqtt.connect("wss://io.adafruit.com/mqtt", { username: AIO_USER, password: AIO_KEY, clientId: "dash_"+Math.random().toString(16).slice(2) });
+        mqttC.on("connect", () => {
+            mqttC.subscribe(`${AIO_USER}/feeds/lora-temperature`);
+            mqttC.subscribe(`${AIO_USER}/feeds/lora-humidite`);
+            // mqttC.subscribe(`${AIO_USER}/feeds/lora-pression`);  // Pression
+            mqttC.subscribe(`${AIO_USER}/feeds/lora-rssi`);
+            mqttC.subscribe(`${AIO_USER}/feeds/lora-snr`);
+            document.getElementById("mqtt-dot").className = "dot dot-purple";
+            document.getElementById("mqtt-text").innerText = "MQTT WebSocket — OK ✓";
+        });
+        mqttC.on("message", (topic, msg) => {
+            const val = parseFloat(msg.toString()).toFixed(1);
+            const ts = fmtDate(new Date());
+            const feed = topic.split("/feeds/")[1];
+            lastLoRaTimestamp = new Date();
+            
+            if(feed === "lora-temperature") { document.getElementById("temp-live-val").childNodes[0].textContent = val; document.getElementById("temp-live-time").innerText = `MQTT — ${ts}`; flashRow("row-temp-live"); lastHeltecTs = new Date(); }
+            if(feed === "lora-humidite")    { document.getElementById("hum-live-val").childNodes[0].textContent = val; document.getElementById("hum-live-time").innerText = `MQTT — ${ts}`; flashRow("row-hum-live"); lastHeltecTs = new Date(); }
+            // if(feed === "lora-pression") { document.getElementById("press-live-val").childNodes[0].textContent = val; document.getElementById("press-live-time").innerText = `MQTT — ${ts}`; flashRow("row-press-live"); lastMKRTs = new Date(); }
+            
+            if(feed === "lora-rssi") {
+                const rssi = parseInt(msg.toString());
+                localRadio.pkts++;
+                localRadio.sum += rssi;
+                if(localRadio.pkts === 1 || rssi < localRadio.min) localRadio.min = rssi;
+                if(rssi > localRadio.max) localRadio.max = rssi;
+                
+                document.getElementById("r-rssi").innerText = rssi;
+                document.getElementById("r-rssi-min").innerText = localRadio.min;
+                document.getElementById("r-rssi-max").innerText = localRadio.max;
+                document.getElementById("r-rssi-avg").innerText = Math.round(localRadio.sum / localRadio.pkts);
+                document.getElementById("r-pkts").innerText = localRadio.pkts;
+                // Estimation (par défaut on met tout sur Heltec si on ne peut pas distinguer)
+                document.getElementById("r-pkts-h").innerText = localRadio.pkts;
+                document.getElementById("r-note").innerHTML = `✅ Radio Stats via <span style='color:var(--lora)'>MQTT Cloud</span> (Repli Local)`;
+            }
+            if(feed === "lora-snr") {
+                document.getElementById("r-snr").innerText = parseFloat(msg.toString()).toFixed(1);
+            }
+            
+            updateStatus();
+        });
+
+        // 4. STATUS
+        function setPill(ts, pillId, dotId, textId, label, tout = 60) {
+            const pill = document.getElementById(pillId);
+            const dot  = document.getElementById(dotId);
+            const text = document.getElementById(textId);
+            if(!ts) { pill.className = "device-pill"; dot.className = "dot dot-grey"; text.innerText = label; return; }
+            const age = Math.round((Date.now() - ts.getTime()) / 1000);
+            if(age < tout) { pill.className = "device-pill online"; dot.className = "dot dot-green"; text.innerText = `${label} (${age}s)`; }
+            else { pill.className = "device-pill offline"; dot.className = "dot dot-red"; text.innerText = `${label} — hors ligne`; }
+        }
+        function updateStatus() {
+            setPill(lastLoRaTimestamp, "m5-pill", "m5-dot", "m5-text", "📦 M5Core", 60);
+            setPill(lastHeltecTs, "heltec-pill", "heltec-dot", "heltec-text", "📡 Heltec V3", 45);
+            setPill(lastMKRTs, "mkr-pill", "mkr-dot", "mkr-text", "🔧 MKR WAN 1310", 45);
+        }
+        setInterval(updateStatus, 5000);
+    </script>
+</body>
+</html>

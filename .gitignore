@@ -1,0 +1,9 @@
+# Fichiers de credentials — ne jamais committer
+arduino_secrets.h
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Fichiers temporaires Arduino IDE
+*.bak

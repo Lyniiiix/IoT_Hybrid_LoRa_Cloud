@@ -1,0 +1,92 @@
+SenseCAP Indicator D1
+Wishlist
+SenseCAP Indicator D1 est une plateforme de développement IoT connectée et polyvalente combinée à un écran tactile 4"
+
+Propulsé par les microcontrôleurs ESP32-S3 et RP2040, il offre une connectivité fluide grâce au Wi-Fi et au Bluetooth 5,
+idéal pour vos projets IoT interactifs
+
+Ses deux ports Grove permettent d'ajouter des capteurs facilement en plug and play
+
+Conçu pour être un moniteur de qualité de l’air, d’affichage météo, de tableau de bord pour les données de capteurs,
+que d’assistant domestique intelligent,
+de mini concentrateur de capteurs, d’album numérique ou encore de rappel interactif,...
+
+——
+
+Concevez et inspirez vous de projets flexibles et modulables grâce aux ressources open-source pour le microcontrôleur RP2040 ou le ESP32-S3. Le Sense Cap indicator 1 fournit une solution clé en main grâce à son guide de démarrage.
+
+Profitez du standard Grove, développé par SeeedStudio, pour connecter vos périphériques sans soudure. Idéal dans un cadre pédagogique, ou pour un projet modulable en toute simplicité. L'éco-système Grove intègre un large choix de capteurs plug & play qui complèteront tous vos projets avec le SenseCap D1 !
+
+Caractéristiques
+ÉCRAN
+
+Taille : 3,95 pouces, 93 x 97 x1 8 mm
+
+Résolution d'écran : 480 x 480 pixels
+
+ Fonctionnalité : tactile capacitif RGB
+ALIMENTATION
+
+Alimentation électrique : 5V DC, 1A via USB
+PROCESSEURS
+
+ESP32-S3 :
+
+Microprocesseur Xtensa®
+
+Dual-core 32 bits LX7
+
+jusqu'à 240 MHz
+
+Mémoire flash : 8 Mo
+
+RP2040 :
+
+Dual ARM Cortex-M0+
+
+jusqu'à 133 MHz
+
+Mémoire flash : 2 Mo
+
+CONNECTIVITÉ
+
+Wi-Fi : 802.11b/g/n, 2,4 GHz
+
+Bluetooth : Bluetooth 5.0 LE
+
+AUDIO
+
+Buzzer : MLT-8530, fréquence de résonance : 2700 Hz
+
+INTERFACES
+
+x3 Ports USB Type-C
+
+x2 Ports Grove 
+
+Protocoles de transmission : ADC, IIC
+
+Stockage externe : via carte Micro-SD jusqu'à 32 Go (non incluse)
+
+CERTIFICATIONS
+
+FCC, CE, RoHS, REACH 
+
+CONTENU
+
+SenseCAP Indicator D1
+
+Câble USB Type-C (1 m)
+
+Capteurs non inclus.
+
+——
+
+GitHub: https://github.com/Seeed-Solution/sensecap_indicator_rp2040
+
+——
+
+Wiki: https://wiki.seeedstudio.com/Sensor/SenseCAP/SenseCAP_Indicator/Get_started_with_SenseCAP_Indicator/
+
+——
+https://www.gotronic.fr/art-sensecap-indicator-d1l-114993070-38263.htm?srsltid=AfmBOoo8d2ZFz0bFSy09QS4oyj8TyVm4ik7tLnDX2lZQO5F9TXQ6UAV5ZLc
