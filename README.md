@@ -3,6 +3,17 @@
 
 ![LoRa](https://img.shields.io/badge/LoRa-868MHz-blue) ![MQTT](https://img.shields.io/badge/MQTT-Adafruit_IO-green) ![M5Stack](https://img.shields.io/badge/Hardware-M5Core-orange) ![Arduino](https://img.shields.io/badge/Hardware-MKR_WAN_1310-grey)
 
+## 📑 Sommaire
+1. [📖 Présentation du Projet](#-présentation-du-projet)
+2. [🏗️ Architecture Matérielle](#️-architecture-matérielle)
+3. [🚀 Utilisation & Démo](#-utilisation--démo)
+4. [👨‍🎓 Guide de Reprise (Pour Étudiants / Stagiaires)](#-guide-de-reprise-pour-étudiants--stagiaires)
+5. [📚 Documentation & Ressources Annexes](#-documentation--ressources-annexes)
+6. [🐞 Issues & Suivi (GitHub)](#-issues--suivi-github)
+7. [📅 Changelog & Historique des Versions](#-changelog--historique-des-versions)
+
+---
+
 ## 📖 Présentation du Projet
 Ce système déploie un réseau local **LoRa P2P** hybride permettant de collecter des données environnementales (Température, Humidité, Pression) depuis plusieurs émetteurs vers une passerelle centrale (Gateway), qui assure ensuite le pont vers le Cloud (Adafruit IO) et une interface web temps-réel.
 
@@ -27,25 +38,6 @@ Ce système déploie un réseau local **LoRa P2P** hybride permettant de collect
 </p>
 
 ---
-
-## 📅 Historique Technique & Développement
-
-### Phase 1 : Prototypage & Initialisation
-- Définition du protocole de communication LoRa P2P (EU868, SF12, BW125).
-- Premier bridge LoRa/WiFi sur ESP32 simple.
-
-### Phase 2 : Migration Gateway & Stabilisation
-- Migration vers **M5Unified** pour le M5Core (Meilleure gestion LCD et Son).
-- Implémentation du **Safe Mode** : Protection contre les crashs lors de réception de paquets malformés.
-
-### Phase 3 : Nouvelle Interface Web (Glassmorphism)
-- Refonte complète du Dashboard Web pour un rendu premium.
-- Ajout de la configuration d'IP dynamique via l'interface UI (LocalStorage).
-- Implémentation de l'analyse radio (RSSI/SNR).
-
-### Phase 4 : Résolution Hardware
-- Correction du boot-loop électrique sur le MKR WAN 1310 (Inversion de l'init matériel).
-- Création du menu OLED dynamique sur le Heltec V3.
 
 ---
 
@@ -136,3 +128,24 @@ flowchart TD
 - **Isolation Réseau & IP Locales** : iOS/Android bloquent souvent les communications P2P sur les points d'accès mobiles (isolation client). C'est pour ça que la section "Radio" du tableau de bord utilise le **repli MQTT Cloud** pour contourner ce blocage.
 - **La carte Pression (BME680)** : Elle est actuellement **commentée** dans le code HTML pour épurer l'interface (suite aux demandes de la soutenance). Si vous réutilisez le BME680, décommentez simplement le code dans `web_dashboard.html` et `LoRa_Receiver_M5Core.ino`.
 - **Limites Adafruit IO (Throttling)** : Le compte gratuit Adafruit limite à **30 requêtes par minute**. Ne configurez pas vos émetteurs LoRa pour envoyer des paquets toutes les secondes, sinon le M5Core sera bloqué temporairement. Un envoi toutes les 5 à 10 secondes est optimal.
+
+---
+
+## 📅 Changelog & Historique des Versions
+
+- **2026-03-23** : Initial commit & update project description
+- **2026-03-24** : Ajout du guide de test SenseCAP Indicator et de la documentation
+- **2026-03-30** : Mise en place M5Stack LoRa Receiver et Dashboard Web
+- **2026-03-30** : Ajout du capteur autonome Heltec WiFi (sans LoRa) pour la soutenance
+- **2026-03-31** : Configuration M5Core et envoi des données vers Adafruit IO / Ajout de l'asset UI_IoT_WEB.png
+- **2026-04-05** : Centralisation des credentials via `arduino_secrets.h`
+- **2026-04-13** : Fix(gateway) : silence speaker, migration vers M5Unified et implémentation du safe-mode
+- **2026-04-13** : Feat(web) : refonte majeure du dashboard avec interface double-source et IP dynamique
+- **2026-04-13** : Fix(mkr-wan) : résolution du boot-loop par priorisation de l'initialisation du modem
+- **2026-04-13** : Feat(heltec) : implémentation de l'UI OLED glissante et boucle de capteurs non-bloquante
+- **2026-04-13** : Ajout du suivi de projet avec des commits structurés et registre d'issues GitHub
+- **2026-04-22** : Sécurisation des clés Adafruit et mise à jour de la documentation de passation
+- **2026-04-22** : Ajout du schéma d'architecture et mention des ressources annexes
+- **2026-04-22** : Création de l'issue majeure #14 pour l'intégration du SenseCAP
+- **2026-04-27** : Versioning final : Nettoyage de l'historique de commits pour sécurisation des clés et restructuration de la documentation pour rendu (Sommaire, Changelog)
+
